@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GATE CSE 2027 — Prep Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: {
+          display: ['"Space Grotesk"', 'sans-serif'],
+          body: ['"Inter"', 'sans-serif'],
+          mono: ['"JetBrains Mono"', 'monospace'],
+        },
+        colors: {
+          ink: { 950:'#0B0F14', 900:'#0F1521', 800:'#151D2C', 700:'#1E2A3F', 600:'#2A3A56' },
+          cyan: { 400:'#3FE3FF', 500:'#00D9FF', 600:'#00A9CC' },
+          amber: { 400:'#FFC53D', 500:'#FFB703' },
+          coral: { 400:'#FF6B6B', 500:'#F5453F' },
+          mint:  { 400:'#4ADE9C', 500:'#22C58D' },
+        }
+      }
+    }
+  }
+</script>
+<style>
+  html { scroll-behavior: smooth; }
+  body { background: #0B0F14; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: #0F1521; }
+  ::-webkit-scrollbar-thumb { background: #2A3A56; border-radius: 6px; }
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(63,227,255,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(63,227,255,0.05) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .scanline { position: relative; overflow: hidden; }
+  .progress-track { background: repeating-linear-gradient(90deg, #1E2A3F 0px, #1E2A3F 2px, transparent 2px, transparent 4px); }
+  @keyframes blink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+  .blinker { animation: blink 1s step-start infinite; }
+  input[type="checkbox"].topic-check { accent-color: #00D9FF; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body class="dark bg-ink-950 text-slate-200 font-body min-h-screen">
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react,typescript" data-type="module">
+
+const { useState, useEffect, useMemo, useCallback, useRef } = React;
+
+/* =========================================================
+   DATA LAYER
+========================================================= */
+
+const EXAM_DATE = new Date('2027-02-07T09:00:00');
+
+const SUBJECTS = [
+  { id:'ga', name:'General Aptitude', short:'GA', weightage:15, difficulty:'Easy', hours:35, color:'#22C58D',
+    topics:[
+      'Verbal Ability — grammar, sentence completion, synonyms/antonyms',
+      'Reading Comprehension',
+      'Quantitative Aptitude — arithmetic, percentages, ratios, profit-loss',
+      'Number Systems & Progressions',
+      'Permutations, Combinations & Probability',
+      'Analytical & Logical Reasoning',
+      'Data Interpretation — tables, graphs, charts',
+      'Spatial & Visual Reasoning',
+    ],
+    resources:[
+      { t:'GATE Aptitude Playlist — Gate Smashers', u:'https://www.youtube.com/@GateSmashers', c:'YouTube' },
+      { t:'GfG Aptitude & Reasoning Notes', u:'https://www.geeksforgeeks.org/aptitude-questions-and-answers/', c:'Notes' },
+      { t:'IndiaBix Quant & Reasoning Practice', u:'https://www.indiabix.com/', c:'Practice' },
+      { t:'GATE Overflow — GA Previous Year Qs', u:'https://gateoverflow.in/', c:'PYQ' },
+    ]},
+  { id:'em', name:'Engineering Mathematics', short:'EM', weightage:8, difficulty:'Medium', hours:45, color:'#3FE3FF',
+    topics:[
+      'Linear Algebra — matrices, rank, eigenvalues/eigenvectors, systems of equations',
+      'Calculus — limits, continuity, differentiability, maxima-minima',
+      'Integral Calculus & multivariable calculus',
+      'Probability — random variables, distributions, mean/variance',
+      'Statistics — conditional probability, Bayes theorem',
+    ],
+    resources:[
+      { t:'NPTEL — Engineering Mathematics', u:'https://nptel.ac.in/', c:'NPTEL' },
+      { t:'Neso Academy — Engineering Mathematics', u:'https://www.youtube.com/@NesoAcademy', c:'YouTube' },
+      { t:'GfG Engineering Mathematics for GATE', u:'https://www.geeksforgeeks.org/engineering-mathematics-gate-cse-notes/', c:'Notes' },
+      { t:'GATE Overflow — Linear Algebra PYQs', u:'https://gateoverflow.in/', c:'PYQ' },
+    ]},
+  { id:'dm', name:'Discrete Mathematics', short:'DM', weightage:9, difficulty:'Medium', hours:45, color:'#3FE3FF',
+    topics:[
+      'Propositional & First Order Logic',
+      'Sets, Relations & Functions',
+      'Partial Orders, Lattices & Posets',
+      'Group Theory & Algebraic Structures',
+      'Combinatorics — counting, pigeonhole, recurrence relations',
+      'Graph Theory — connectivity, coloring, trees, planarity',
+    ],
+    resources:[
+      { t:'Gate Smashers — Discrete Mathematics', u:'https://www.youtube.com/@GateSmashers', c:'YouTube' },
+      { t:'NPTEL — Discrete Mathematics', u:'https://nptel.ac.in/', c:'NPTEL' },
+      { t:'GfG Discrete Mathematics Notes', u:'https://www.geeksforgeeks.org/engineering-mathematics-gate-cse-notes/', c:'Notes' },
+      { t:'Knowledge Gate — Graph Theory & Combinatorics', u:'https://www.youtube.com/@KnowledgeGateCS', c:'YouTube' },
+    ]},
+  { id:'dld', name:'Digital Logic', short:'DLD', weightage:6, difficulty:'Easy', hours:30, color:'#FFC53D',
+    topics:[
+      'Number Systems & Codes',
+      'Boolean Algebra & Minimization (K-Map)',
+      'Combinational Circuits — MUX, DEMUX, adders, encoders',
+      'Sequential Circuits — flip-flops, counters, registers',
+      'Number Representation & Computer Arithmetic',
+    ],
+    resources:[
+      { t:'Neso Academy — Digital Electronics', u:'https://www.youtube.com/@NesoAcademy', c:'YouTube' },
+      { t:'Gate Smashers — Digital Logic', u:'https://www.youtube.com/@GateSmashers', c:'YouTube' },
+      { t:'NPTEL — Digital Circuits', u:'https://nptel.ac.in/', c:'NPTEL' },
+      { t:'GfG Digital Logic Notes', u:'https://www.geeksforgeeks.org/digital-electronics-logic-design-tutorials/', c:'Notes' },
+    ]},
+  { id:'coa', name:'Computer Organization & Architecture', short:'COA', weightage:8, difficulty:'Medium', hours:40, color:'#FFC53D',
+    topics:[
+      'Machine Instructions & Addressing Modes',
+      'ALU, Data-path & Control Unit',
+      'Instruction Pipelining & Hazards',
+      'Memory Hierarchy — cache mapping, replacement policies',
+      'Main Memory & Secondary Storage',
+      'I/O Interface — interrupts, DMA',
+    ],
+    resources:[
+      { t:'Gate Smashers — COA Playlist', u:'https://www.youtube.com/@GateSmashers', c:'YouTube' },
+      { t:"Jenny's Lectures — Computer Organization", u:'https://www.youtube.com/@Jennys_Lectures', c:'YouTube' },
+      { t:'NPTEL — Computer Organization', u:'https://nptel.ac.in/', c:'NPTEL' },
+      { t:'GfG Computer Organization Notes', u:'https://www.geeksforgeeks.org/computer-organization-and-architecture-tutorials/', c:'Notes' },
+    ]},
+  { id:'pds', name:'Programming & Data Structures', short:'PDS', weightage:10, difficulty:'Medium', hours:55, color:'#FF6B6B',
+    topics:[
+      'C Programming — control flow, functions, pointers',
+      'Recursion & recurrence intuition',
+      'Arrays, Stacks & Queues',
+      'Linked Lists (singly, doubly, circular)',
+      'Trees — BST, AVL, heaps, traversals',
+      'Graphs — representations & traversals',
+      'Hashing',
+    ],
+    resources:[
+      { t:'Gate Smashers — Data Structures', u:'https://www.youtube.com/@GateSmashers', c:'YouTube' },
+      { t:'Neso Academy — C Programming & DS', u:'https://www.youtube.com/@NesoAcademy', c:'YouTube' },
+      { t:'GfG Data Structures Course (Free)', u:'https://www.geeksforgeeks.org/data-structures/', c:'Website' },
+      { t:'HackerRank — Data Structures Practice', u:'https://www.hackerrank.com/domains/data-structures', c:'Practice' },
+    ]},
+  { id:'algo', name:'Algorithms', short:'ALGO', weightage:9, difficulty:'Hard', hours:50, color:'#FF6B6B',
+    topics:[
+      'Asymptotic Analysis & Recurrences',
+      'Searching & Sorting',
+      'Divide & Conquer',
+      'Greedy Algorithms',
+      'Dynamic Programming',
+      'Graph Algorithms — BFS/DFS, MST, shortest paths',
+      'NP-Completeness basics',
+    ],
+    resources:[
+      { t:'Abdul Bari — Algorithms Playlist', u:'https://www.youtube.com/results?search_query=abdul+bari+algorithms', c:'YouTube' },
+      { t:'Gate Smashers — Algorithms', u:'https://www.youtube.com/@GateSmashers', c:'YouTube' },
+      { t:'NPTEL — Design and Analysis of Algorithms', u:'https://nptel.ac.in/', c:'NPTEL' },
+      { t:'GfG DAA Notes & PYQs', u:'https://www.geeksforgeeks.org/gate-cs-notes-gq/', c:'Notes' },
+    ]},
+  { id:'toc', name:'Theory of Computation', short:'TOC', weightage:6, difficulty:'Hard', hours:35, color:'#B692F6',
+    topics:[
+      'Regular Languages & Finite Automata',
+      'Regular Expressions & Pumping Lemma',
+      'Context-Free Languages & Pushdown Automata',
+      'Context-Free Grammar & Chomsky/Greibach forms',
+      'Turing Machines',
+      'Decidability & Undecidability',
+    ],
+    resources:[
+      { t:'Neso Academy — Theory of Computation', u:'https://www.youtube.com/@NesoAcademy', c:'YouTube' },
+      { t:'Gate Smashers — TOC Playlist', u:'https://www.youtube.com/@GateSmashers', c:'YouTube' },
+      { t:'NPTEL — Theory of Computation', u:'https://nptel.ac.in/', c:'NPTEL' },
+      { t:'GfG TOC Notes', u:'https://www.geeksforgeeks.org/theory-of-computation-automata-tutorials/', c:'Notes' },
+    ]},
+  { id:'cd', name:'Compiler Design', short:'CD', weightage:5, difficulty:'Medium', hours:25, color:'#B692F6',
+    topics:[
+      'Lexical Analysis',
+      'Parsing — Top-Down & Bottom-Up (LL, LR)',
+      'Syntax-Directed Translation',
+      'Runtime Environment',
+      'Intermediate Code Generation',
+      'Code Optimization basics',
+    ],
+    resources:[
+      { t:'Neso Academy — Compiler Design', u:'https://www.youtube.com/@NesoAcademy', c:'YouTube' },
+      { t:'Gate Smashers — Compiler Design', u:'https://www.youtube.com/@GateSmashers', c:'YouTube' },
+      { t:'NPTEL — Compiler Design', u:'https://nptel.ac.in/', c:'NPTEL' },
+      { t:'GfG Compiler Design Notes', u:'https://www.geeksforgeeks.org/compiler-design-tutorials/', c:'Notes' },
+    ]},
+  { id:'os', name:'Operating Systems', short:'OS', weightage:10, difficulty:'Medium', hours:45, color:'#4ADE9C',
+    topics:[
+      'Processes, Threads & CPU Scheduling',
+      'Process Synchronization — semaphores, monitors, classic problems',
+      'Deadlocks — detection, prevention, avoidance',
+      'Memory Management & Virtual Memory (paging, segmentation)',
+      'File Systems & Disk Scheduling',
+      'I/O Systems basics',
+    ],
+    resources:[
+      { t:'Gate Smashers — Operating Systems', u:'https://www.youtube.com/@GateSmashers', c:'YouTube' },
+      { t:"Jenny's Lectures — OS Playlist", u:'https://www.youtube.com/@Jennys_Lectures', c:'YouTube' },
+      { t:'NPTEL — Operating Systems', u:'https://nptel.ac.in/', c:'NPTEL' },
+      { t:'GfG Operating Systems Notes', u:'https://www.geeksforgeeks.org/operating-systems/', c:'Notes' },
+    ]},
+  { id:'dbms', name:'Databases', short:'DBMS', weightage:8, difficulty:'Medium', hours:40, color:'#4ADE9C',
+    topics:[
+      'ER Model & Relational Model',
+      'Relational Algebra & Tuple Calculus',
+      'SQL — DDL, DML, joins, subqueries',
+      'Normalization & Functional Dependencies',
+      'Transactions, Concurrency Control & Recovery',
+      'Indexing — B/B+ trees, file organization',
+    ],
+    resources:[
+      { t:"Jenny's Lectures — DBMS Playlist", u:'https://www.youtube.com/@Jennys_Lectures', c:'YouTube' },
+      { t:'Gate Smashers — DBMS', u:'https://www.youtube.com/@GateSmashers', c:'YouTube' },
+      { t:'NPTEL — Database Management System', u:'https://nptel.ac.in/', c:'NPTEL' },
+      { t:'GfG DBMS Notes', u:'https://www.geeksforgeeks.org/dbms/', c:'Notes' },
+    ]},
+  { id:'cn', name:'Computer Networks', short:'CN', weightage:8, difficulty:'Medium', hours:40, color:'#F5453F',
+    topics:[
+      'Layering — OSI & TCP/IP models',
+      'Data Link Layer — framing, error detection, MAC',
+      'Network Layer — IPv4, subnetting, routing algorithms',
+      'Transport Layer — TCP, UDP, congestion control',
+      'Application Layer — DNS, HTTP, email protocols',
+      'Network Security basics',
+    ],
+    resources:[
+      { t:'Gate Smashers — Computer Networks', u:'https://www.youtube.com/@GateSmashers', c:'YouTube' },
+      { t:'Neso Academy — Computer Networks', u:'https://www.youtube.com/@NesoAcademy', c:'YouTube' },
+      { t:'NPTEL — Computer Networks', u:'https://nptel.ac.in/', c:'NPTEL' },
+      { t:'GfG Computer Networks Notes', u:'https://www.geeksforgeeks.org/computer-network-tutorials/', c:'Notes' },
+    ]},
+];
+
+const GENERAL_RESOURCES = [
+  { t:'GATE Overflow — Free PYQs with community solutions', u:'https://gateoverflow.in/', c:'PYQ', subj:'All' },
+  { t:'GfG GATE CS Notes & Question Bank', u:'https://www.geeksforgeeks.org/gate-cs-notes-gq/', c:'Notes', subj:'All' },
+  { t:'NPTEL — Free IIT/IISc video courses', u:'https://nptel.ac.in/', c:'NPTEL', subj:'All' },
+  { t:'GATE official website — brochure & pattern', u:'https://gate.iitk.ac.in/', c:'Official', subj:'All' },
+  { t:'Gate Smashers — full CSE playlist channel', u:'https://www.youtube.com/@GateSmashers', c:'YouTube', subj:'All' },
+  { t:'Knowledge Gate — full CSE playlist channel', u:'https://www.youtube.com/@KnowledgeGateCS', c:'YouTube', subj:'All' },
+];
+
+const REVISION_INTERVALS = [1, 3, 7, 16, 35]; // spaced repetition, days
+
+const DEFAULT_STATE = {
+  topics: {},        // topicKey -> { done:bool, notes:'', bookmark:bool }
+  revisions: {},      // topicKey -> { count:0, lastDate:null, nextDate:null }
+  pyqs: {},           // pyqKey -> { status: 'unsolved'|'solved'|'incorrect'|'revision', bookmark:false }
+  mockTests: [],       // { id, name, date, score, maxScore, accuracy, negMarks, timeTaken, weakAreas }
+  studyLog: {},        // 'YYYY-MM-DD' -> hours
+  streak: { current:0, best:0, lastDate:null },
+  habits: {},          // 'YYYY-MM-DD' -> { habitId: bool }
+  goals: [],           // { id, text, done, due }
+  plannerTasks: {},     // 'YYYY-MM-DD' -> [{id,text,done}]
+  settings: { theme:'dark' },
+};
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem('gateTrackerState');
+    if (!raw) return structuredClone(DEFAULT_STATE);
+    const parsed = JSON.parse(raw);
+    return { ...structuredClone(DEFAULT_STATE), ...parsed };
+  } catch (e) { return structuredClone(DEFAULT_STATE); }
+}
+function saveState(state) {
+  try { localStorage.setItem('gateTrackerState', JSON.stringify(state)); } catch (e) {}
+}
+function todayKey(d = new Date()) { return d.toISOString().slice(0,10); }
+function daysBetween(a,b) { return Math.round((b-a)/(1000*60*60*24)); }
+
+/* =========================================================
+   SHARED UI PRIMITIVES
+========================================================= */
+
+function Panel({ children, className='' }) {
+  return <div className={`bg-ink-900/80 border border-ink-700 rounded-xl backdrop-blur-sm ${className}`}>{children}</div>;
+}
+
+function Eyebrow({ children }) {
+  return <div className="font-mono text-[11px] tracking-[0.2em] uppercase text-cyan-400/80 mb-2">{children}</div>;
+}
+
+function StatCard({ label, value, sub, accent='cyan' }) {
+  const ring = { cyan:'text-cyan-400', amber:'text-amber-400', mint:'text-mint-400', coral:'text-coral-400' }[accent];
+  return (
+    <Panel className="p-4 flex flex-col gap-1">
+      <Eyebrow>{label}</Eyebrow>
+      <div className={`font-display text-3xl font-semibold ${ring}`}>{value}</div>
+      {sub && <div className="text-xs text-slate-400">{sub}</div>}
+    </Panel>
+  );
+}
+
+function ProgressBar({ pct, color='#00D9FF', h='h-2' }) {
+  return (
+    <div className={`w-full ${h} rounded-full bg-ink-700 overflow-hidden`}>
+      <div className={`${h} rounded-full transition-all duration-500`} style={{ width:`${Math.min(100,Math.max(0,pct))}%`, background: color }} />
+    </div>
+  );
+}
+
+function Pill({ children, tone='default' }) {
+  const tones = {
+    default: 'bg-ink-700 text-slate-300',
+    easy: 'bg-mint-500/15 text-mint-400 border border-mint-500/30',
+    medium: 'bg-amber-500/15 text-amber-400 border border-amber-500/30',
+    hard: 'bg-coral-500/15 text-coral-400 border border-coral-500/30',
+  };
+  return <span className={`px-2 py-0.5 rounded-md text-[11px] font-mono uppercase tracking-wide ${tones[tone]||tones.default}`}>{children}</span>;
+}
+
+function diffTone(d) { return d==='Easy'?'easy':d==='Hard'?'hard':'medium'; }
+
+/* =========================================================
+   RING / RADIAL CHART (pure SVG)
+========================================================= */
+function RadialProgress({ pct, size=120, stroke=10, color='#00D9FF', label, sub }) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const offset = c - (pct/100) * c;
+  return (
+    <div className="relative flex items-center justify-center" style={{ width:size, height:size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size/2} cy={size/2} r={r} stroke="#1E2A3F" strokeWidth={stroke} fill="none" />
+        <circle cx={size/2} cy={size/2} r={r} stroke={color} strokeWidth={stroke} fill="none"
+          strokeDasharray={c} strokeDashoffset={offset} strokeLinecap="round"
+          style={{ transition:'stroke-dashoffset 0.6s ease' }} />
+      </svg>
+      <div className="absolute flex flex-col items-center">
+        <span className="font-display text-2xl font-bold text-white">{Math.round(pct)}%</span>
+        {label && <span className="text-[10px] font-mono text-slate-400 uppercase">{label}</span>}
+      </div>
+    </div>
+  );
+}
+
+/* Simple bar chart (SVG) */
+function BarChart({ data, height=160, color='#00D9FF', valueSuffix='' }) {
+  const max = Math.max(1, ...data.map(d=>d.value));
+  const w = 100 / data.length;
+  return (
+    <div className="w-full" style={{ height }}>
+      <svg viewBox={`0 0 100 ${height}`} preserveAspectRatio="none" className="w-full h-full overflow-visible">
+        {data.map((d,i) => {
+          const barH = (d.value / max) * (height - 24);
+          return (
+            <g key={i}>
+              <rect x={i*w + w*0.2} y={height-24-barH} width={w*0.6} height={barH} fill={color} rx="1.5" opacity="0.9" />
+              <text x={i*w + w/2} y={height-8} fontSize="4.2" textAnchor="middle" fill="#94A3B8" fontFamily="JetBrains Mono">{d.label}</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+/* Heat map (contribution style) */
+function HeatMap({ studyLog }) {
+  const days = [];
+  const end = new Date();
+  for (let i = 111; i >= 0; i--) {
+    const d = new Date(end); d.setDate(end.getDate() - i);
+    days.push(d);
+  }
+  const weeks = [];
+  for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i+7));
+  const colorFor = (hrs) => {
+    if (!hrs) return '#151D2C';
+    if (hrs < 1) return '#0E4552';
+    if (hrs < 2) return '#0F6C82';
+    if (hrs < 4) return '#00A9CC';
+    return '#3FE3FF';
+  };
+  return (
+    <div className="flex gap-1 overflow-x-auto pb-2">
+      {weeks.map((wk,wi) => (
+        <div key={wi} className="flex flex-col gap-1">
+          {wk.map((d,di) => {
+            const hrs = studyLog[todayKey(d)] || 0;
+            return <div key={di} title={`${todayKey(d)}: ${hrs}h`} className="w-3 h-3 rounded-sm" style={{ background: colorFor(hrs) }} />;
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* =========================================================
+   NAVIGATION
+========================================================= */
+const NAV = [
+  { id:'dashboard', label:'Dashboard', icon:'◧' },
+  { id:'subjects', label:'Subjects', icon:'▤' },
+  { id:'resources', label:'Resource Library', icon:'▦' },
+  { id:'pyq', label:'PYQ Tracker', icon:'✓' },
+  { id:'revision', label:'Revision', icon:'↻' },
+  { id:'mocks', label:'Mock Tests', icon:'▣' },
+  { id:'analytics', label:'Analytics', icon:'▟' },
+  { id:'utilities', label:'Utilities', icon:'⏱' },
+  { id:'settings', label:'Settings', icon:'⚙' },
+];
+
+function Sidebar({ page, setPage, mobileOpen, setMobileOpen }) {
+  return (
+    <>
+      <aside className={`fixed lg:sticky top-0 z-40 h-screen w-64 shrink-0 bg-ink-900 border-r border-ink-700 flex flex-col transition-transform duration-200 ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+        <div className="px-5 py-5 border-b border-ink-700">
+          <div className="font-mono text-[10px] tracking-[0.25em] text-cyan-400 uppercase">Prep Console</div>
+          <div className="font-display text-lg font-bold text-white leading-tight">GATE CSE <span className="text-cyan-400">2027</span></div>
+        </div>
+        <nav className="flex-1 overflow-y-auto py-3 px-2">
+          {NAV.map(item => (
+            <button key={item.id} onClick={() => { setPage(item.id); setMobileOpen(false); }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm font-medium transition-colors ${page===item.id ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-ink-800 border border-transparent'}`}>
+              <span className="w-5 text-center opacity-80">{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
+        </nav>
+        <div className="px-4 py-4 border-t border-ink-700 font-mono text-[10px] text-slate-500">
+          local-only · no cloud sync
+        </div>
+      </aside>
+      {mobileOpen && <div className="fixed inset-0 bg-black/60 z-30 lg:hidden" onClick={() => setMobileOpen(false)} />}
+    </>
+  );
+}
+
+function Topbar({ setMobileOpen, countdown }) {
+  return (
+    <div className="sticky top-0 z-20 bg-ink-950/90 backdrop-blur border-b border-ink-800 px-4 lg:px-8 py-3 flex items-center justify-between">
+      <button className="lg:hidden text-slate-300 text-xl" onClick={() => setMobileOpen(o=>!o)}>☰</button>
+      <div className="hidden lg:block text-sm text-slate-400 font-mono">gate-cse-2027 <span className="text-cyan-400">/</span> console</div>
+      <div className="flex items-center gap-2 font-mono text-xs bg-ink-800 border border-ink-700 rounded-full px-3 py-1.5">
+        <span className="text-slate-400">T-minus</span>
+        <span className="text-amber-400 font-semibold">{countdown.days}d {countdown.hours}h {countdown.mins}m</span>
+        <span className="w-1.5 h-1.5 rounded-full bg-mint-400 blinker" />
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   DASHBOARD PAGE
+========================================================= */
+function useCountdown() {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => { const t = setInterval(() => setNow(new Date()), 60000); return () => clearInterval(t); }, []);
+  const diff = Math.max(0, EXAM_DATE - now);
+  return {
+    days: Math.floor(diff / 86400000),
+    hours: Math.floor((diff % 86400000) / 3600000),
+    mins: Math.floor((diff % 3600000) / 60000),
+  };
+}
+
+function computeOverallStats(state) {
+  let totalTopics = 0, doneTopics = 0, totalHours = 0;
+  SUBJECTS.forEach(s => { totalTopics += s.topics.length; totalHours += s.hours;
+    s.topics.forEach((_,i) => { const k = `${s.id}:${i}`; if (state.topics[k]?.done) doneTopics++; });
+  });
+  const studiedHours = Object.values(state.studyLog).reduce((a,b)=>a+b,0);
+  return { totalTopics, doneTopics, pct: totalTopics? (doneTopics/totalTopics*100):0, totalHours, studiedHours };
+}
+
+function Dashboard({ state, setState, setPage }) {
+  const countdown = useCountdown();
+  const stats = useMemo(() => computeOverallStats(state), [state]);
+  const revisionsDueCount = useMemo(() => {
+    const today = todayKey();
+    return Object.values(state.revisions).filter(r => r.nextDate && r.nextDate <= today).length;
+  }, [state]);
+  const mockAvg = useMemo(() => {
+    if (!state.mockTests.length) return null;
+    const total = state.mockTests.reduce((a,m)=>a + (m.score/m.maxScore*100),0);
+    return (total/state.mockTests.length).toFixed(1);
+  }, [state.mockTests]);
+
+  const last7 = useMemo(() => {
+    const arr = [];
+    for (let i=6;i>=0;i--) { const d=new Date(); d.setDate(d.getDate()-i); arr.push({ label: d.toLocaleDateString('en-US',{weekday:'short'}).slice(0,2), value: state.studyLog[todayKey(d)]||0 }); }
+    return arr;
+  }, [state.studyLog]);
+
+  const logToday = (hrs) => {
+    setState(s => {
+      const key = todayKey();
+      const prev = s.studyLog[key] || 0;
+      const newLog = { ...s.studyLog, [key]: Math.max(0, prev + hrs) };
+      // streak calc
+      let streak = { ...s.streak };
+      const y = todayKey(new Date(Date.now()-86400000));
+      if (newLog[key] > 0) {
+        if (s.streak.lastDate === key) { /* already counted today */ }
+        else if (s.streak.lastDate === y) { streak.current = s.streak.current + 1; streak.lastDate = key; }
+        else { streak.current = 1; streak.lastDate = key; }
+        streak.best = Math.max(streak.best, streak.current);
+      }
+      return { ...s, studyLog: newLog, streak };
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <Eyebrow>Mission Control</Eyebrow>
+          <h1 className="font-display text-2xl md:text-3xl font-bold text-white">Welcome back, candidate.</h1>
+          <p className="text-slate-400 text-sm mt-1">Exam day is <span className="text-amber-400 font-mono">{EXAM_DATE.toDateString()}</span> (tentative). Every checked topic moves the needle.</p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={()=>logToday(1)} className="px-3 py-2 rounded-lg bg-cyan-500 text-ink-950 font-semibold text-sm hover:bg-cyan-400 transition">+1h studied today</button>
+          <button onClick={()=>logToday(0.5)} className="px-3 py-2 rounded-lg bg-ink-800 border border-ink-700 text-slate-200 font-semibold text-sm hover:border-cyan-500/50 transition">+30m</button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="Overall Progress" value={`${stats.doneTopics}/${stats.totalTopics}`} sub={`${stats.pct.toFixed(1)}% topics complete`} accent="cyan" />
+        <StatCard label="Study Streak" value={`${state.streak.current}d`} sub={`Best: ${state.streak.best}d`} accent="amber" />
+        <StatCard label="Hours Logged" value={`${stats.studiedHours}h`} sub={`of ~${stats.totalHours}h planned`} accent="mint" />
+        <StatCard label="Revisions Due" value={revisionsDueCount} sub="tap Revision tab" accent="coral" />
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-4">
+        <Panel className="p-5 lg:col-span-1 flex flex-col items-center justify-center gap-3">
+          <Eyebrow>Overall Completion</Eyebrow>
+          <RadialProgress pct={stats.pct} color="#00D9FF" />
+          <div className="text-xs text-slate-400 text-center">{stats.totalTopics - stats.doneTopics} topics remaining across 12 subjects</div>
+        </Panel>
+        <Panel className="p-5 lg:col-span-2">
+          <Eyebrow>Last 7 Days — Study Hours</Eyebrow>
+          <BarChart data={last7} color="#00D9FF" />
+        </Panel>
+      </div>
+
+      <Panel className="p-5">
+        <Eyebrow>Subject Progress</Eyebrow>
+        <div className="space-y-3 mt-2">
+          {SUBJECTS.map(s => {
+            const done = s.topics.filter((_,i)=>state.topics[`${s.id}:${i}`]?.done).length;
+            const pct = done / s.topics.length * 100;
+            return (
+              <button key={s.id} onClick={()=>setPage('subjects', s.id)} className="w-full text-left group">
+                <div className="flex items-center justify-between text-sm mb-1">
+                  <span className="text-slate-300 group-hover:text-cyan-300 transition">{s.name} <span className="text-slate-500 font-mono text-xs">· {s.weightage}%</span></span>
+                  <span className="font-mono text-xs text-slate-400">{done}/{s.topics.length}</span>
+                </div>
+                <ProgressBar pct={pct} color={s.color} />
+              </button>
+            );
+          })}
+        </div>
+      </Panel>
+
+      {mockAvg && (
+        <Panel className="p-5 flex items-center justify-between">
+          <div>
+            <Eyebrow>Mock Test Average</Eyebrow>
+            <div className="font-display text-2xl text-white font-bold">{mockAvg}%</div>
+          </div>
+          <button onClick={()=>setPage('mocks')} className="text-cyan-400 text-sm font-mono hover:underline">view all →</button>
+        </Panel>
+      )}
+    </div>
+  );
+}
+
+/* =========================================================
+   SUBJECTS PAGES
+========================================================= */
+function SubjectsList({ state, setPage }) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <Eyebrow>All Subjects</Eyebrow>
+        <h1 className="font-display text-2xl font-bold text-white">GATE CSE Syllabus — 12 Subjects</h1>
+      </div>
+      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {SUBJECTS.map(s => {
+          const done = s.topics.filter((_,i)=>state.topics[`${s.id}:${i}`]?.done).length;
+          const pct = done / s.topics.length * 100;
+          return (
+            <button key={s.id} onClick={()=>setPage('subject-detail', s.id)} className="text-left">
+              <Panel className="p-4 h-full hover:border-cyan-500/40 transition-colors flex flex-col gap-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="font-mono text-[10px] text-slate-500">{s.short}</div>
+                    <div className="font-display font-semibold text-white">{s.name}</div>
+                  </div>
+                  <Pill tone={diffTone(s.difficulty)}>{s.difficulty}</Pill>
+                </div>
+                <div className="flex gap-3 text-xs text-slate-400 font-mono">
+                  <span>{s.weightage}% weight</span><span>·</span><span>{s.hours}h plan</span>
+                </div>
+                <ProgressBar pct={pct} color={s.color} />
+                <div className="text-xs text-slate-500 font-mono">{done}/{s.topics.length} topics done</div>
+              </Panel>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SubjectDetail({ state, setState, subjectId, setPage }) {
+  const s = SUBJECTS.find(x=>x.id===subjectId) || SUBJECTS[0];
+  const [tab, setTab] = useState('topics');
+  const [noteDraft, setNoteDraft] = useState('');
+
+  const toggleTopic = (i) => {
+    const k = `${s.id}:${i}`;
+    setState(st => ({ ...st, topics: { ...st.topics, [k]: { ...(st.topics[k]||{}), done: !st.topics[k]?.done } } }));
+  };
+  const toggleBookmark = (i) => {
+    const k = `${s.id}:${i}`;
+    setState(st => ({ ...st, topics: { ...st.topics, [k]: { ...(st.topics[k]||{}), bookmark: !st.topics[k]?.bookmark } } }));
+  };
+  const saveNote = (i, text) => {
+    const k = `${s.id}:${i}`;
+    setState(st => ({ ...st, topics: { ...st.topics, [k]: { ...(st.topics[k]||{}), notes: text } } }));
+  };
+  const scheduleRevision = (i) => {
+    const k = `${s.id}:${i}`;
+    setState(st => {
+      const cur = st.revisions[k] || { count:0 };
+      const nextCount = cur.count + 1;
+      const interval = REVISION_INTERVALS[Math.min(nextCount-1, REVISION_INTERVALS.length-1)];
+      const next = new Date(); next.setDate(next.getDate()+interval);
+      return { ...st, revisions: { ...st.revisions, [k]: { count: nextCount, lastDate: todayKey(), nextDate: todayKey(next) } } };
+    });
+  };
+
+  const done = s.topics.filter((_,i)=>state.topics[`${s.id}:${i}`]?.done).length;
+  const pct = done / s.topics.length * 100;
+
+  return (
+    <div className="space-y-6">
+      <button onClick={()=>setPage('subjects')} className="text-cyan-400 text-sm font-mono hover:underline">← all subjects</button>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <Eyebrow>{s.short}</Eyebrow>
+          <h1 className="font-display text-2xl md:text-3xl font-bold text-white">{s.name}</h1>
+          <div className="flex gap-2 mt-2">
+            <Pill tone={diffTone(s.difficulty)}>{s.difficulty}</Pill>
+            <Pill>{s.weightage}% weightage</Pill>
+            <Pill>{s.hours}h planned</Pill>
+          </div>
+        </div>
+        <RadialProgress pct={pct} size={90} color={s.color} />
+      </div>
+
+      <div className="flex gap-2 border-b border-ink-800 overflow-x-auto">
+        {['topics','notes','resources','pyqs'].map(t => (
+          <button key={t} onClick={()=>setTab(t)} className={`px-4 py-2 text-sm font-mono uppercase tracking-wide whitespace-nowrap ${tab===t?'text-cyan-400 border-b-2 border-cyan-400':'text-slate-500 hover:text-slate-300'}`}>{t}</button>
+        ))}
+      </div>
+
+      {tab==='topics' && (
+        <Panel className="p-4 divide-y divide-ink-800">
+          {s.topics.map((topic,i) => {
+            const k = `${s.id}:${i}`;
+            const t = state.topics[k] || {};
+            const rev = state.revisions[k];
+            return (
+              <div key={i} className="py-3 flex items-start gap-3">
+                <input type="checkbox" className="topic-check mt-1 w-4 h-4" checked={!!t.done} onChange={()=>toggleTopic(i)} />
+                <div className="flex-1">
+                  <div className={`text-sm ${t.done ? 'text-slate-500 line-through' : 'text-slate-200'}`}>{topic}</div>
+                  {rev && <div className="text-[11px] font-mono text-slate-500 mt-1">Revisions: {rev.count} · next due {rev.nextDate}</div>}
+                </div>
+                <button onClick={()=>toggleBookmark(i)} className={`text-lg ${t.bookmark ? 'text-amber-400' : 'text-slate-600 hover:text-slate-400'}`} title="Bookmark">★</button>
+                <button onClick={()=>scheduleRevision(i)} className="text-xs font-mono px-2 py-1 rounded-md bg-ink-800 border border-ink-700 text-cyan-400 hover:border-cyan-500/50">↻ revise</button>
+              </div>
+            );
+          })}
+        </Panel>
+      )}
+
+      {tab==='notes' && (
+        <div className="space-y-3">
+          {s.topics.map((topic,i) => {
+            const k = `${s.id}:${i}`;
+            const t = state.topics[k] || {};
+            return (
+              <Panel key={i} className="p-3">
+                <div className="text-xs text-slate-400 mb-1">{topic}</div>
+                <textarea defaultValue={t.notes||''} onBlur={(e)=>saveNote(i, e.target.value)} placeholder="Jot a quick note or formula…" className="w-full bg-ink-800 border border-ink-700 rounded-lg p-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500/50" rows={2} />
+              </Panel>
+            );
+          })}
+        </div>
+      )}
+
+      {tab==='resources' && (
+        <div className="grid md:grid-cols-2 gap-3">
+          {s.resources.map((r,i) => (
+            <a key={i} href={r.u} target="_blank" rel="noreferrer">
+              <Panel className="p-4 hover:border-cyan-500/40 transition-colors flex items-center justify-between">
+                <div>
+                  <div className="text-sm text-slate-200 font-medium">{r.t}</div>
+                  <div className="text-xs text-slate-500 font-mono mt-1">{r.c} · Free</div>
+                </div>
+                <span className="text-cyan-400">↗</span>
+              </Panel>
+            </a>
+          ))}
+        </div>
+      )}
+
+      {tab==='pyqs' && (
+        <Panel className="p-5 text-sm text-slate-400">
+          Topic-wise PYQs for {s.name} live in the full <button onClick={()=>setPage('pyq')} className="text-cyan-400 hover:underline">PYQ Tracker</button> — filter by subject there.
+        </Panel>
+      )}
+    </div>
+  );
+}
+
+/* =========================================================
+   RESOURCE LIBRARY
+========================================================= */
+function ResourceLibrary() {
+  const [q, setQ] = useState('');
+  const [subjFilter, setSubjFilter] = useState('All');
+  const [catFilter, setCatFilter] = useState('All');
+
+  const allResources = useMemo(() => {
+    const fromSubjects = SUBJECTS.flatMap(s => s.resources.map(r => ({ ...r, subj: s.name })));
+    return [...GENERAL_RESOURCES, ...fromSubjects];
+  }, []);
+  const categories = useMemo(() => ['All', ...new Set(allResources.map(r=>r.c))], [allResources]);
+  const subjects = useMemo(() => ['All', 'All Subjects', ...SUBJECTS.map(s=>s.name)], []);
+
+  const filtered = allResources.filter(r => {
+    const matchQ = r.t.toLowerCase().includes(q.toLowerCase());
+    const matchSubj = subjFilter==='All' || r.subj===subjFilter || (subjFilter==='All Subjects' && r.subj==='All');
+    const matchCat = catFilter==='All' || r.c===catFilter;
+    return matchQ && matchSubj && matchCat;
+  });
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <Eyebrow>Resource Library</Eyebrow>
+        <h1 className="font-display text-2xl font-bold text-white">Free Study Resources</h1>
+        <p className="text-slate-400 text-sm mt-1">Curated NPTEL lectures, YouTube channels, notes hubs & practice sites — all free, mostly English.</p>
+      </div>
+      <div className="flex flex-col md:flex-row gap-3">
+        <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search resources…" className="flex-1 bg-ink-800 border border-ink-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500/50" />
+        <select value={subjFilter} onChange={e=>setSubjFilter(e.target.value)} className="bg-ink-800 border border-ink-700 rounded-lg px-3 py-2 text-sm text-slate-200">
+          {subjects.map(s=><option key={s}>{s}</option>)}
+        </select>
+        <select value={catFilter} onChange={e=>setCatFilter(e.target.value)} className="bg-ink-800 border border-ink-700 rounded-lg px-3 py-2 text-sm text-slate-200">
+          {categories.map(c=><option key={c}>{c}</option>)}
+        </select>
+      </div>
+      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
+        {filtered.map((r,i) => (
+          <a key={i} href={r.u} target="_blank" rel="noreferrer">
+            <Panel className="p-4 hover:border-cyan-500/40 transition-colors h-full flex flex-col justify-between gap-3">
+              <div>
+                <div className="text-sm text-slate-200 font-medium">{r.t}</div>
+                <div className="text-xs text-slate-500 mt-1">{r.subj || 'All Subjects'}</div>
+              </div>
+              <div className="flex items-center justify-between">
+                <Pill>{r.c}</Pill>
+                <span className="text-cyan-400 text-sm">↗</span>
+              </div>
+            </Panel>
+          </a>
+        ))}
+        {filtered.length===0 && <div className="text-slate-500 text-sm col-span-full">No resources match those filters.</div>}
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   PYQ TRACKER
+========================================================= */
+const PYQ_YEARS = [2026,2025,2024,2023,2022,2021,2020];
+function generatePyqSeed() {
+  // representative topic-linked PYQ entries per subject/year (lightweight synthetic tracker rows)
+  const rows = [];
+  SUBJECTS.forEach(s => {
+    PYQ_YEARS.forEach(y => {
+      rows.push({ key:`${s.id}-${y}`, subject:s.name, subjId:s.id, year:y, label:`${s.short} — GATE ${y} question set` });
+    });
+  });
+  return rows;
+}
+const PYQ_ROWS = generatePyqSeed();
+
+function PyqTracker({ state, setState }) {
+  const [subjFilter, setSubjFilter] = useState('All');
+  const [yearFilter, setYearFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All');
+
+  const setStatus = (key, status) => {
+    setState(st => ({ ...st, pyqs: { ...st.pyqs, [key]: { ...(st.pyqs[key]||{}), status } } }));
+  };
+  const toggleBookmark = (key) => {
+    setState(st => ({ ...st, pyqs: { ...st.pyqs, [key]: { ...(st.pyqs[key]||{}), bookmark: !st.pyqs[key]?.bookmark } } }));
+  };
+
+  const filtered = PYQ_ROWS.filter(r => {
+    const st = state.pyqs[r.key]?.status || 'unsolved';
+    return (subjFilter==='All' || r.subjId===subjFilter) && (yearFilter==='All' || r.year===Number(yearFilter)) && (statusFilter==='All' || st===statusFilter);
+  });
+
+  const counts = useMemo(() => {
+    const c = { solved:0, unsolved:0, incorrect:0, revision:0 };
+    PYQ_ROWS.forEach(r => { const st = state.pyqs[r.key]?.status || 'unsolved'; c[st] = (c[st]||0)+1; });
+    return c;
+  }, [state.pyqs]);
+
+  const statusStyle = { solved:'text-mint-400 bg-mint-500/10 border-mint-500/30', unsolved:'text-slate-400 bg-ink-800 border-ink-700', incorrect:'text-coral-400 bg-coral-500/10 border-coral-500/30', revision:'text-amber-400 bg-amber-500/10 border-amber-500/30' };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <Eyebrow>Previous Year Questions</Eyebrow>
+        <h1 className="font-display text-2xl font-bold text-white">PYQ Tracker · {PYQ_YEARS[PYQ_YEARS.length-1]}–{PYQ_YEARS[0]}</h1>
+        <p className="text-slate-400 text-sm mt-1">Track solved status per subject/year. Pull the actual question sets from GATE Overflow, linked below.</p>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatCard label="Solved" value={counts.solved} accent="mint" />
+        <StatCard label="Unsolved" value={counts.unsolved} accent="cyan" />
+        <StatCard label="Incorrect" value={counts.incorrect} accent="coral" />
+        <StatCard label="For Revision" value={counts.revision} accent="amber" />
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        <select value={subjFilter} onChange={e=>setSubjFilter(e.target.value)} className="bg-ink-800 border border-ink-700 rounded-lg px-3 py-2 text-sm text-slate-200">
+          <option value="All">All Subjects</option>
+          {SUBJECTS.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+        <select value={yearFilter} onChange={e=>setYearFilter(e.target.value)} className="bg-ink-800 border border-ink-700 rounded-lg px-3 py-2 text-sm text-slate-200">
+          <option value="All">All Years</option>
+          {PYQ_YEARS.map(y=><option key={y} value={y}>{y}</option>)}
+        </select>
+        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} className="bg-ink-800 border border-ink-700 rounded-lg px-3 py-2 text-sm text-slate-200">
+          <option value="All">All Status</option>
+          <option value="solved">Solved</option>
+          <option value="unsolved">Unsolved</option>
+          <option value="incorrect">Incorrect</option>
+          <option value="revision">Revision</option>
+        </select>
+        <a href="https://gateoverflow.in/" target="_blank" rel="noreferrer" className="ml-auto text-cyan-400 text-sm font-mono hover:underline self-center">open GATE Overflow ↗</a>
+      </div>
+
+      <Panel className="p-2 divide-y divide-ink-800">
+        {filtered.map(r => {
+          const status = state.pyqs[r.key]?.status || 'unsolved';
+          const bookmark = state.pyqs[r.key]?.bookmark;
+          return (
+            <div key={r.key} className="flex flex-wrap items-center gap-3 p-3">
+              <div className="flex-1 min-w-[180px]">
+                <div className="text-sm text-slate-200">{r.label}</div>
+                <div className="text-xs text-slate-500">{r.subject} · GATE {r.year}</div>
+              </div>
+              <button onClick={()=>toggleBookmark(r.key)} className={`text-lg ${bookmark?'text-amber-400':'text-slate-600 hover:text-slate-400'}`}>★</button>
+              {['unsolved','solved','incorrect','revision'].map(s => (
+                <button key={s} onClick={()=>setStatus(r.key, s)} className={`px-2.5 py-1 rounded-md text-[11px] font-mono uppercase border ${status===s?statusStyle[s]:'text-slate-500 border-ink-700 hover:text-slate-300'}`}>{s}</button>
+              ))}
+            </div>
+          );
+        })}
+        {filtered.length===0 && <div className="p-6 text-slate-500 text-sm">No entries for these filters.</div>}
+      </Panel>
+    </div>
+  );
+}
+
+/* =========================================================
+   REVISION SYSTEM
+========================================================= */
+function RevisionSystem({ state, setState, setPage }) {
+  const today = todayKey();
+  const entries = useMemo(() => {
+    return Object.entries(state.revisions).map(([key,r]) => {
+      const [subjId, idx] = key.split(':');
+      const s = SUBJECTS.find(x=>x.id===subjId);
+      const topic = s ? s.topics[Number(idx)] : key;
+      return { key, subjId, subjName: s?.name, topic, ...r };
+    });
+  }, [state.revisions]);
+
+  const due = entries.filter(e => e.nextDate && e.nextDate <= today).sort((a,b)=>a.nextDate.localeCompare(b.nextDate));
+  const upcoming = entries.filter(e => e.nextDate && e.nextDate > today).sort((a,b)=>a.nextDate.localeCompare(b.nextDate));
+  const history = entries.filter(e => e.count > 0).sort((a,b)=>(b.lastDate||'').localeCompare(a.lastDate||''));
+
+  const completeRevision = (key) => {
+    setState(st => {
+      const cur = st.revisions[key];
+      const nextCount = cur.count + 1;
+      const interval = REVISION_INTERVALS[Math.min(nextCount-1, REVISION_INTERVALS.length-1)];
+      const next = new Date(); next.setDate(next.getDate()+interval);
+      return { ...st, revisions: { ...st.revisions, [key]: { count: nextCount, lastDate: todayKey(), nextDate: todayKey(next) } } };
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <Eyebrow>Spaced Repetition</Eyebrow>
+        <h1 className="font-display text-2xl font-bold text-white">Revision System</h1>
+        <p className="text-slate-400 text-sm mt-1">Intervals follow 1 → 3 → 7 → 16 → 35 days after each completed revision. Mark topics for revision from any Subject page.</p>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-4">
+        <StatCard label="Due Today" value={due.length} accent="coral" />
+        <StatCard label="Upcoming" value={upcoming.length} accent="cyan" />
+        <StatCard label="Total Revised" value={history.length} accent="mint" />
+      </div>
+
+      <Panel className="p-4">
+        <Eyebrow>Due Now</Eyebrow>
+        {due.length===0 && <div className="text-sm text-slate-500 py-4">Nothing due today. Nice work.</div>}
+        <div className="divide-y divide-ink-800">
+          {due.map(e => (
+            <div key={e.key} className="py-3 flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm text-slate-200">{e.topic}</div>
+                <div className="text-xs text-slate-500">{e.subjName} · cycle {e.count} · was due {e.nextDate}</div>
+              </div>
+              <button onClick={()=>completeRevision(e.key)} className="px-3 py-1.5 rounded-lg bg-cyan-500 text-ink-950 text-xs font-semibold hover:bg-cyan-400">mark revised</button>
+            </div>
+          ))}
+        </div>
+      </Panel>
+
+      <Panel className="p-4">
+        <Eyebrow>Upcoming Revisions</Eyebrow>
+        {upcoming.length===0 && <div className="text-sm text-slate-500 py-4">No upcoming revisions scheduled.</div>}
+        <div className="divide-y divide-ink-800">
+          {upcoming.slice(0,15).map(e => (
+            <div key={e.key} className="py-2.5 flex items-center justify-between text-sm">
+              <span className="text-slate-300">{e.topic}</span>
+              <span className="font-mono text-xs text-slate-500">{e.nextDate}</span>
+            </div>
+          ))}
+        </div>
+      </Panel>
+
+      <Panel className="p-4">
+        <Eyebrow>Revision History</Eyebrow>
+        {history.length===0 && <div className="text-sm text-slate-500 py-4">No revisions logged yet. Go to a subject page and hit "revise".</div>}
+        <div className="divide-y divide-ink-800">
+          {history.slice(0,20).map(e => (
+            <div key={e.key} className="py-2.5 flex items-center justify-between text-sm">
+              <span className="text-slate-300">{e.topic}</span>
+              <span className="font-mono text-xs text-slate-500">{e.count}x · last {e.lastDate}</span>
+            </div>
+          ))}
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+/* =========================================================
+   MOCK TESTS
+========================================================= */
+function MockTests({ state, setState }) {
+  const [form, setForm] = useState({ name:'', maxScore:100, score:'', negMarks:0, timeTaken:180, weakAreas:'' });
+
+  const addMock = () => {
+    if (!form.name || form.score==='') return;
+    const entry = { id: Date.now(), name: form.name, date: todayKey(), score: Number(form.score), maxScore: Number(form.maxScore), negMarks: Number(form.negMarks), timeTaken: Number(form.timeTaken), weakAreas: form.weakAreas, accuracy: null };
+    setState(st => ({ ...st, mockTests: [...st.mockTests, entry] }));
+    setForm({ name:'', maxScore:100, score:'', negMarks:0, timeTaken:180, weakAreas:'' });
+  };
+  const removeMock = (id) => setState(st => ({ ...st, mockTests: st.mockTests.filter(m=>m.id!==id) }));
+
+  const chartData = state.mockTests.map((m,i) => ({ label:`T${i+1}`, value: Math.round(m.score/m.maxScore*100) }));
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <Eyebrow>Full Length & Sectional</Eyebrow>
+        <h1 className="font-display text-2xl font-bold text-white">Mock Test Tracker</h1>
+      </div>
+
+      <Panel className="p-4 grid md:grid-cols-6 gap-3">
+        <input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Test name" className="md:col-span-2 bg-ink-800 border border-ink-700 rounded-lg px-3 py-2 text-sm text-slate-200" />
+        <input type="number" value={form.score} onChange={e=>setForm({...form,score:e.target.value})} placeholder="Score" className="bg-ink-800 border border-ink-700 rounded-lg px-3 py-2 text-sm text-slate-200" />
+        <input type="number" value={form.maxScore} onChange={e=>setForm({...form,maxScore:e.target.value})} placeholder="Max score" className="bg-ink-800 border border-ink-700 rounded-lg px-3 py-2 text-sm text-slate-200" />
+        <input type="number" value={form.negMarks} onChange={e=>setForm({...form,negMarks:e.target.value})} placeholder="Neg. marks lost" className="bg-ink-800 border border-ink-700 rounded-lg px-3 py-2 text-sm text-slate-200" />
+        <input type="number" value={form.timeTaken} onChange={e=>setForm({...form,timeTaken:e.target.value})} placeholder="Time (min)" className="bg-ink-800 border border-ink-700 rounded-lg px-3 py-2 text-sm text-slate-200" />
+        <input value={form.weakAreas} onChange={e=>setForm({...form,weakAreas:e.target.value})} placeholder="Weak areas (comma separated)" className="md:col-span-5 bg-ink-800 border border-ink-700 rounded-lg px-3 py-2 text-sm text-slate-200" />
+        <button onClick={addMock} className="bg-cyan-500 text-ink-950 rounded-lg text-sm font-semibold hover:bg-cyan-400">Log Test</button>
+      </Panel>
+
+      {chartData.length>0 && (
+        <Panel className="p-5">
+          <Eyebrow>Performance Trend (%)</Eyebrow>
+          <BarChart data={chartData} color="#FFC53D" />
+        </Panel>
+      )}
+
+      <Panel className="p-2 divide-y divide-ink-800">
+        {state.mockTests.slice().reverse().map(m => (
+          <div key={m.id} className="p-3 flex flex-wrap items-center gap-4">
+            <div className="flex-1 min-w-[160px]">
+              <div className="text-sm text-slate-200 font-medium">{m.name}</div>
+              <div className="text-xs text-slate-500">{m.date}</div>
+            </div>
+            <div className="text-xs font-mono text-slate-400">Score: <span className="text-cyan-400">{m.score}/{m.maxScore}</span></div>
+            <div className="text-xs font-mono text-slate-400">Accuracy: <span className="text-mint-400">{Math.round(m.score/m.maxScore*100)}%</span></div>
+            <div className="text-xs font-mono text-slate-400">Neg: <span className="text-coral-400">-{m.negMarks}</span></div>
+            <div className="text-xs font-mono text-slate-400">Time: {m.timeTaken}m</div>
+            {m.weakAreas && <div className="text-xs font-mono text-amber-400">Weak: {m.weakAreas}</div>}
+            <button onClick={()=>removeMock(m.id)} className="ml-auto text-slate-500 hover:text-coral-400 text-xs">remove</button>
+          </div>
+        ))}
+        {state.mockTests.length===0 && <div className="p-6 text-slate-500 text-sm">No mock tests logged yet.</div>}
+      </Panel>
+    </div>
+  );
+}
+
+/* =========================================================
+   ANALYTICS
+========================================================= */
+function Analytics({ state }) {
+  const stats = computeOverallStats(state);
+  const subjectPct = SUBJECTS.map(s => {
+    const done = s.topics.filter((_,i)=>state.topics[`${s.id}:${i}`]?.done).length;
+    return { label: s.short, value: Math.round(done/s.topics.length*100) };
+  });
+  const pyqStats = useMemo(() => {
+    const c = { solved:0, total:PYQ_ROWS.length };
+    PYQ_ROWS.forEach(r => { if (state.pyqs[r.key]?.status==='solved') c.solved++; });
+    return c;
+  }, [state.pyqs]);
+  const revisionPct = useMemo(() => {
+    const totalTopics = SUBJECTS.reduce((a,s)=>a+s.topics.length,0);
+    const revisedOnce = Object.values(state.revisions).filter(r=>r.count>0).length;
+    return totalTopics ? (revisedOnce/totalTopics*100) : 0;
+  }, [state.revisions]);
+  const mockTrend = state.mockTests.map((m,i)=>({ label:`T${i+1}`, value: Math.round(m.score/m.maxScore*100) }));
+  const accTrend = state.mockTests.map((m,i)=>({ label:`T${i+1}`, value: Math.round(m.score/m.maxScore*100) }));
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <Eyebrow>Deep Dive</Eyebrow>
+        <h1 className="font-display text-2xl font-bold text-white">Analytics</h1>
+      </div>
+
+      <div className="grid md:grid-cols-4 gap-4">
+        <StatCard label="Completion %" value={`${stats.pct.toFixed(1)}%`} accent="cyan" />
+        <StatCard label="Revision %" value={`${revisionPct.toFixed(1)}%`} accent="amber" />
+        <StatCard label="PYQ Solved" value={`${pyqStats.solved}/${pyqStats.total}`} accent="mint" />
+        <StatCard label="Mock Tests" value={state.mockTests.length} accent="coral" />
+      </div>
+
+      <Panel className="p-5">
+        <Eyebrow>Subject-wise Completion %</Eyebrow>
+        <BarChart data={subjectPct} color="#3FE3FF" height={200} />
+      </Panel>
+
+      {mockTrend.length>0 && (
+        <Panel className="p-5">
+          <Eyebrow>Mock Test Score Trend</Eyebrow>
+          <BarChart data={mockTrend} color="#FFC53D" />
+        </Panel>
+      )}
+
+      <Panel className="p-5">
+        <Eyebrow>Study Heat Map — last 16 weeks</Eyebrow>
+        <HeatMap studyLog={state.studyLog} />
+      </Panel>
+    </div>
+  );
+}
+
+/* =========================================================
+   UTILITIES — Pomodoro, Stopwatch, Goals, Habits, Planner
+========================================================= */
+function Pomodoro() {
+  const [mode, setMode] = useState('focus'); // focus | break
+  const [seconds, setSeconds] = useState(25*60);
+  const [running, setRunning] = useState(false);
+  const durations = { focus:25*60, break:5*60 };
+  useEffect(() => {
+    if (!running) return;
+    const t = setInterval(() => setSeconds(s => {
+      if (s<=1) { const next = mode==='focus'?'break':'focus'; setMode(next); return durations[next]; }
+      return s-1;
+    }), 1000);
+    return () => clearInterval(t);
+  }, [running, mode]);
+  const mm = String(Math.floor(seconds/60)).padStart(2,'0');
+  const ss = String(seconds%60).padStart(2,'0');
+  return (
+    <Panel className="p-6 flex flex-col items-center gap-4">
+      <Eyebrow>{mode==='focus'?'Focus Session':'Break'}</Eyebrow>
+      <div className="font-display text-5xl font-bold text-white tabular-nums">{mm}:{ss}</div>
+      <div className="flex gap-2">
+        <button onClick={()=>setRunning(r=>!r)} className="px-4 py-2 rounded-lg bg-cyan-500 text-ink-950 font-semibold text-sm">{running?'Pause':'Start'}</button>
+        <button onClick={()=>{ setRunning(false); setSeconds(durations[mode]); }} className="px-4 py-2 rounded-lg bg-ink-800 border border-ink-700 text-slate-200 text-sm">Reset</button>
+        <button onClick={()=>{ const next = mode==='focus'?'break':'focus'; setMode(next); setSeconds(durations[next]); setRunning(false); }} className="px-4 py-2 rounded-lg bg-ink-800 border border-ink-700 text-slate-200 text-sm">Switch</button>
+      </div>
+    </Panel>
+  );
+}
+
+function Stopwatch() {
+  const [ms, setMs] = useState(0);
+  const [running, setRunning] = useState(false);
+  const laps = useRef([]);
+  const [lapList, setLapList] = useState([]);
+  useEffect(() => {
+    if (!running) return;
+    const start = Date.now() - ms;
+    const t = setInterval(()=> setMs(Date.now()-start), 100);
+    return ()=>clearInterval(t);
+  }, [running]);
+  const fmt = (v) => {
+    const m = Math.floor(v/60000), s = Math.floor((v%60000)/1000), c = Math.floor((v%1000)/100);
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${c}`;
+  };
+  return (
+    <Panel className="p-6 flex flex-col items-center gap-4">
+      <Eyebrow>Stopwatch</Eyebrow>
+      <div className="font-display text-4xl font-bold text-white tabular-nums">{fmt(ms)}</div>
+      <div className="flex gap-2">
+        <button onClick={()=>setRunning(r=>!r)} className="px-4 py-2 rounded-lg bg-cyan-500 text-ink-950 font-semibold text-sm">{running?'Pause':'Start'}</button>
+        <button onClick={()=>setLapList(l=>[fmt(ms), ...l])} className="px-4 py-2 rounded-lg bg-ink-800 border border-ink-700 text-slate-200 text-sm">Lap</button>
+        <button onClick={()=>{setRunning(false); setMs(0); setLapList([]);}} className="px-4 py-2 rounded-lg bg-ink-800 border border-ink-700 text-slate-200 text-sm">Reset</button>
+      </div>
+      {lapList.length>0 && <div className="text-xs font-mono text-slate-400 space-y-1 max-h-24 overflow-y-auto w-full text-center">{lapList.map((l,i)=><div key={i}>{l}</div>)}</div>}
+    </Panel>
+  );
+}
+
+function GoalsHabits({ state, setState }) {
+  const [goalText, setGoalText] = useState('');
+  const addGoal = () => { if(!goalText) return; setState(st=>({...st, goals:[...st.goals,{id:Date.now(),text:goalText,done:false}]})); setGoalText(''); };
+  const toggleGoal = (id) => setState(st=>({...st, goals: st.goals.map(g=>g.id===id?{...g,done:!g.done}:g)}));
+  const removeGoal = (id) => setState(st=>({...st, goals: st.goals.filter(g=>g.id!==id)}));
+
+  const HABITS = [{id:'study',label:'Studied 2+ hrs'},{id:'revise',label:'Did a revision'},{id:'pyq',label:'Solved PYQs'},{id:'mock',label:'Took a mock/sectional'}];
+  const key = todayKey();
+  const todayHabits = state.habits[key] || {};
+  const toggleHabit = (hid) => setState(st => ({ ...st, habits: { ...st.habits, [key]: { ...(st.habits[key]||{}), [hid]: !st.habits[key]?.[hid] } } }));
+
+  return (
+    <div className="grid md:grid-cols-2 gap-4">
+      <Panel className="p-4">
+        <Eyebrow>Goal Tracker</Eyebrow>
+        <div className="flex gap-2 mb-3">
+          <input value={goalText} onChange={e=>setGoalText(e.target.value)} placeholder="Add a goal…" className="flex-1 bg-ink-800 border border-ink-700 rounded-lg px-3 py-2 text-sm text-slate-200" />
+          <button onClick={addGoal} className="px-3 py-2 rounded-lg bg-cyan-500 text-ink-950 text-sm font-semibold">Add</button>
+        </div>
+        <div className="space-y-2">
+          {state.goals.map(g => (
+            <div key={g.id} className="flex items-center gap-2">
+              <input type="checkbox" className="topic-check" checked={g.done} onChange={()=>toggleGoal(g.id)} />
+              <span className={`flex-1 text-sm ${g.done?'line-through text-slate-500':'text-slate-200'}`}>{g.text}</span>
+              <button onClick={()=>removeGoal(g.id)} className="text-slate-600 hover:text-coral-400 text-xs">✕</button>
+            </div>
+          ))}
+          {state.goals.length===0 && <div className="text-sm text-slate-500">No goals yet.</div>}
+        </div>
+      </Panel>
+      <Panel className="p-4">
+        <Eyebrow>Daily Habit Checklist — {key}</Eyebrow>
+        <div className="space-y-2">
+          {HABITS.map(h => (
+            <label key={h.id} className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" className="topic-check" checked={!!todayHabits[h.id]} onChange={()=>toggleHabit(h.id)} />
+              <span className="text-sm text-slate-200">{h.label}</span>
+            </label>
+          ))}
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+function Planner({ state, setState }) {
+  const [view, setView] = useState('daily');
+  const [text, setText] = useState('');
+  const key = todayKey();
+  const tasksToday = state.plannerTasks[key] || [];
+  const addTask = () => { if(!text) return; setState(st=>({...st, plannerTasks:{...st.plannerTasks,[key]:[...(st.plannerTasks[key]||[]),{id:Date.now(),text,done:false}]}})); setText(''); };
+  const toggle = (id) => setState(st=>({...st, plannerTasks:{...st.plannerTasks,[key]:(st.plannerTasks[key]||[]).map(t=>t.id===id?{...t,done:!t.done}:t)}}));
+  const remove = (id) => setState(st=>({...st, plannerTasks:{...st.plannerTasks,[key]:(st.plannerTasks[key]||[]).filter(t=>t.id!==id)}}));
+
+  const weekDates = useMemo(() => { const arr=[]; const now=new Date(); const day=now.getDay(); const monday=new Date(now); monday.setDate(now.getDate()-((day+6)%7)); for(let i=0;i<7;i++){const d=new Date(monday); d.setDate(monday.getDate()+i); arr.push(d);} return arr; }, []);
+
+  return (
+    <Panel className="p-4">
+      <div className="flex items-center justify-between mb-3">
+        <Eyebrow>Planner</Eyebrow>
+        <div className="flex gap-1">
+          {['daily','weekly','monthly'].map(v => <button key={v} onClick={()=>setView(v)} className={`px-2 py-1 rounded-md text-[11px] font-mono uppercase ${view===v?'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30':'text-slate-500'}`}>{v}</button>)}
+        </div>
+      </div>
+      {view==='daily' && (
+        <div>
+          <div className="flex gap-2 mb-3">
+            <input value={text} onChange={e=>setText(e.target.value)} placeholder="Add today's task…" className="flex-1 bg-ink-800 border border-ink-700 rounded-lg px-3 py-2 text-sm text-slate-200" />
+            <button onClick={addTask} className="px-3 py-2 rounded-lg bg-cyan-500 text-ink-950 text-sm font-semibold">Add</button>
+          </div>
+          <div className="space-y-2">
+            {tasksToday.map(t => (
+              <div key={t.id} className="flex items-center gap-2">
+                <input type="checkbox" className="topic-check" checked={t.done} onChange={()=>toggle(t.id)} />
+                <span className={`flex-1 text-sm ${t.done?'line-through text-slate-500':'text-slate-200'}`}>{t.text}</span>
+                <button onClick={()=>remove(t.id)} className="text-slate-600 hover:text-coral-400 text-xs">✕</button>
+              </div>
+            ))}
+            {tasksToday.length===0 && <div className="text-sm text-slate-500">Nothing planned for today yet.</div>}
+          </div>
+        </div>
+      )}
+      {view==='weekly' && (
+        <div className="grid grid-cols-7 gap-2 text-xs">
+          {weekDates.map(d => { const k=todayKey(d); const tasks=state.plannerTasks[k]||[]; return (
+            <div key={k} className="bg-ink-800 rounded-lg p-2 min-h-[90px]">
+              <div className="font-mono text-slate-400 mb-1">{d.toLocaleDateString('en-US',{weekday:'short'})}</div>
+              {tasks.map(t=><div key={t.id} className={`truncate ${t.done?'text-slate-600 line-through':'text-slate-300'}`}>{t.text}</div>)}
+            </div>
+          );})}
+        </div>
+      )}
+      {view==='monthly' && (
+        <div className="text-sm text-slate-400">Monthly view aggregates your daily tasks automatically as you add them — switch to Daily to add entries for any date by revisiting this tab on that day, or plan ahead using Weekly.</div>
+      )}
+    </Panel>
+  );
+}
+
+function Utilities({ state, setState }) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <Eyebrow>Study Toolkit</Eyebrow>
+        <h1 className="font-display text-2xl font-bold text-white">Utilities</h1>
+      </div>
+      <div className="grid md:grid-cols-2 gap-4">
+        <Pomodoro />
+        <Stopwatch />
+      </div>
+      <GoalsHabits state={state} setState={setState} />
+      <Planner state={state} setState={setState} />
+    </div>
+  );
+}
+
+/* =========================================================
+   SETTINGS
+========================================================= */
+function Settings({ state, setState }) {
+  const fileInput = useRef(null);
+  const exportData = () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type:'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `gate-tracker-backup-${todayKey()}.json`; a.click();
+    URL.revokeObjectURL(url);
+  };
+  const importData = (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => { try { const parsed = JSON.parse(evt.target.result); setState({ ...DEFAULT_STATE, ...parsed }); alert('Progress imported successfully.'); } catch { alert('Invalid backup file.'); } };
+    reader.readAsText(file);
+  };
+  const resetAll = () => { if (confirm('This clears all local progress permanently. Continue?')) setState(structuredClone(DEFAULT_STATE)); };
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <div>
+        <Eyebrow>Preferences</Eyebrow>
+        <h1 className="font-display text-2xl font-bold text-white">Settings</h1>
+      </div>
+      <Panel className="p-5 space-y-3">
+        <Eyebrow>Backup & Restore</Eyebrow>
+        <p className="text-sm text-slate-400">All progress is stored only in this browser's local storage. Export regularly so you never lose it.</p>
+        <div className="flex gap-3 flex-wrap">
+          <button onClick={exportData} className="px-4 py-2 rounded-lg bg-cyan-500 text-ink-950 text-sm font-semibold">Export Progress (JSON)</button>
+          <button onClick={()=>fileInput.current.click()} className="px-4 py-2 rounded-lg bg-ink-800 border border-ink-700 text-slate-200 text-sm font-semibold">Import Progress</button>
+          <input ref={fileInput} type="file" accept="application/json" className="hidden" onChange={importData} />
+        </div>
+      </Panel>
+      <Panel className="p-5 space-y-3">
+        <Eyebrow>Danger Zone</Eyebrow>
+        <p className="text-sm text-slate-400">Reset wipes topics, revisions, PYQ status, mock tests, goals and habits. This cannot be undone unless you have a backup.</p>
+        <button onClick={resetAll} className="px-4 py-2 rounded-lg bg-coral-500/15 border border-coral-500/40 text-coral-400 text-sm font-semibold">Reset All Progress</button>
+      </Panel>
+      <Panel className="p-5 text-xs text-slate-500 font-mono leading-relaxed">
+        GATE CSE 2027 Prep Console · single-file build · data stored under localStorage key <span className="text-cyan-400">gateTrackerState</span> · exam date shown is tentative until GATE 2027 official notification.
+      </Panel>
+    </div>
+  );
+}
+
+/* =========================================================
+   ROOT APP
+========================================================= */
+function App() {
+  const [state, setState] = useState(loadState());
+  const [page, setPageRaw] = useState('dashboard');
+  const [subjectId, setSubjectId] = useState('ga');
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const countdown = useCountdown();
+
+  useEffect(() => { saveState(state); }, [state]);
+
+  const setPage = (p, sid) => {
+    if (p==='subjects' && sid) { setSubjectId(sid); setPageRaw('subject-detail'); return; }
+    if (sid) setSubjectId(sid);
+    setPageRaw(p);
+    window.scrollTo(0,0);
+  };
+
+  let content;
+  switch(page) {
+    case 'dashboard': content = <Dashboard state={state} setState={setState} setPage={setPage} />; break;
+    case 'subjects': content = <SubjectsList state={state} setPage={setPage} />; break;
+    case 'subject-detail': content = <SubjectDetail state={state} setState={setState} subjectId={subjectId} setPage={setPage} />; break;
+    case 'resources': content = <ResourceLibrary />; break;
+    case 'pyq': content = <PyqTracker state={state} setState={setState} />; break;
+    case 'revision': content = <RevisionSystem state={state} setState={setState} setPage={setPage} />; break;
+    case 'mocks': content = <MockTests state={state} setState={setState} />; break;
+    case 'analytics': content = <Analytics state={state} />; break;
+    case 'utilities': content = <Utilities state={state} setState={setState} />; break;
+    case 'settings': content = <Settings state={state} setState={setState} />; break;
+    default: content = <Dashboard state={state} setState={setState} setPage={setPage} />;
+  }
+
+  return (
+    <div className="flex min-h-screen grid-bg">
+      <Sidebar page={page==='subject-detail'?'subjects':page} setPage={setPage} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
+      <div className="flex-1 min-w-0">
+        <Topbar setMobileOpen={setMobileOpen} countdown={countdown} />
+        <main className="p-4 lg:p-8 max-w-6xl mx-auto">{content}</main>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
